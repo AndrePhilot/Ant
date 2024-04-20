@@ -27,6 +27,9 @@ app.use("/companies", companiesRoutes);
 app.use("/users", usersRoutes);
 app.use("/jobs", jobsRoutes);
 
+app.get("/", (req, res) => {
+  res.status(200).send("Jobly is running");
+});
 
 /** Handle 404 errors -- this matches everything */
 app.use(function (req, res, next) {
