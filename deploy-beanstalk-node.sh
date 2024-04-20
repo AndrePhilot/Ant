@@ -1,3 +1,5 @@
+set -e
+
 log() {
   echo "$(date +"%Y-%m-%d %T"): $1"
 }
@@ -16,6 +18,6 @@ while ! nc -z localhost 3000; do
   sleep 1
 done
 
-echo "Node.js server started successfully"
+log "Node.js server started successfully"
 
-echo "Deployment completed at $(date)"
+log "Deployment completed at $(date)"
