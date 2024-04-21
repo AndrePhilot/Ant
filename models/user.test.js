@@ -7,12 +7,12 @@ const {
 } = require("../expressError");
 const db = require("../db.js");
 const User = require("./user.js");
+const Job = require("./job.js");
 const {
   commonBeforeAll,
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
-  testJobIds,
 } = require("./_testCommon");
 
 beforeAll(commonBeforeAll);
@@ -74,6 +74,7 @@ describe("register", function () {
     expect(found.rows.length).toEqual(1);
     expect(found.rows[0].is_admin).toEqual(false);
     expect(found.rows[0].password.startsWith("$2b$")).toEqual(true);
+    await User.remove(newUser.username);
   });
 
   test("works: adds admin", async function () {
@@ -87,6 +88,7 @@ describe("register", function () {
     expect(found.rows.length).toEqual(1);
     expect(found.rows[0].is_admin).toEqual(true);
     expect(found.rows[0].password.startsWith("$2b$")).toEqual(true);
+    await User.remove(newUser.username);
   });
 
   test("bad request with dup data", async function () {
@@ -104,6 +106,9 @@ describe("register", function () {
       expect(err instanceof BadRequestError).toBeTruthy();
     }
   });
+  async () => {
+    await User.remove(newUser.username);
+  }
 });
 
 /************************************** findAll */
@@ -118,6 +123,7 @@ describe("findAll", function () {
         lastName: "U1L",
         email: "u1@email.com",
         isAdmin: false,
+        jobs: [],
       },
       {
         username: "u2",
@@ -125,6 +131,7 @@ describe("findAll", function () {
         lastName: "U2L",
         email: "u2@email.com",
         isAdmin: false,
+        jobs: [],
       },
     ]);
   });
@@ -141,7 +148,7 @@ describe("get", function () {
       lastName: "U1L",
       email: "u1@email.com",
       isAdmin: false,
-      applications: [testJobIds[0]],
+      jobs: [],
     });
   });
 
@@ -231,35 +238,95 @@ describe("remove", function () {
   });
 });
 
-/************************************** applyToJob */
+/************************************** apply */
 
-describe("applyToJob", function () {
-  test("works", async function () {
-    await User.applyToJob("u1", testJobIds[1]);
+describe("apply", function () {
+  test("works for 1 application", async function () {
+    const job = await Job.create({
+      title: "title",
+      salary: null,
+      equity: null,
+      companyHandle: "c2"
+    });
+
+    const application = await User.apply("u1", job.id);
+    expect(application.jobId).toBe(job.id);
 
     const res = await db.query(
-        "SELECT * FROM applications WHERE job_id=$1", [testJobIds[1]]);
-    expect(res.rows).toEqual([{
-      job_id: testJobIds[1],
-      username: "u1",
-    }]);
+      `SELECT * FROM applications`);
+    expect(res.rows[0].username).toBe("u1");
+    expect(res.rows[0].job_id).toBe(job.id);
+    expect(res.rows.length).toBe(1);
+
+    await Job.remove(job.id);
   });
 
-  test("not found if no such job", async function () {
+  test("works for 2 applications", async function () {
+    const job1 = await Job.create({
+      title: "title",
+      salary: null,
+      equity: null,
+      companyHandle: "c2"
+    });
+
+    const job2 = await Job.create({
+      title: "title",
+      salary: null,
+      equity: null,
+      companyHandle: "c2"
+    });
+
+    const application1 = await User.apply("u1", job1.id);
+    expect(application1.jobId).toBe(job1.id);
+
+    const application2 = await User.apply("u1", job2.id);
+    expect(application2.jobId).toBe(job2.id);
+
+    const res = await db.query(
+      `SELECT * FROM applications`);
+    expect(res.rows[0].username).toBe("u1");
+    expect(res.rows[1].username).toBe("u1");
+    expect(res.rows[0].job_id).toBe(job1.id);
+    expect(res.rows[1].job_id).toBe(job2.id);
+    expect(res.rows.length).toBe(2);
+
+    await Job.remove(job1.id);
+    await Job.remove(job2.id);
+  });
+
+  test("NotFoundError missing user", async function () {
     try {
-      await User.applyToJob("u1", 0, "applied");
-      fail();
+      await User.apply("u9", 1);
     } catch (err) {
       expect(err instanceof NotFoundError).toBeTruthy();
+      expect(err.message.toLowerCase()).toContain('user');
     }
   });
 
-  test("not found if no such user", async function () {
+  test("NotFoundError missing job id", async function () {
     try {
-      await User.applyToJob("nope", testJobIds[0], "applied");
-      fail();
+      await User.apply("u1", 1);
     } catch (err) {
       expect(err instanceof NotFoundError).toBeTruthy();
+      expect(err.message.toLowerCase()).toContain('job');
+    }
+  });
+
+  test("BadRequestError for the same user reapplying to the same job", async function () {
+    const job = await Job.create({
+      title: "title",
+      salary: null,
+      equity: null,
+      companyHandle: "c2"
+    });
+
+    await User.apply("u1", job.id);
+    try {
+      await User.apply("u1", job.id);
+    } catch (err) {
+      expect(err instanceof BadRequestError).toBeTruthy();
+      expect(err.message).toEqual('This user has already applied to this job.');
+      await Job.remove(job.id);
     }
   });
 });

@@ -6,8 +6,6 @@ const Company = require("../models/company");
 const Job = require("../models/job");
 const { createToken } = require("../helpers/tokens");
 
-const testJobIds = [];
-
 async function commonBeforeAll() {
   // noinspection SqlWithoutWhere
   await db.query("DELETE FROM users");
@@ -38,13 +36,27 @@ async function commonBeforeAll() {
         description: "Desc3",
         logoUrl: "http://c3.img",
       });
-
-  testJobIds[0] = (await Job.create(
-      { title: "J1", salary: 1, equity: "0.1", companyHandle: "c1" })).id;
-  testJobIds[1] = (await Job.create(
-      { title: "J2", salary: 2, equity: "0.2", companyHandle: "c1" })).id;
-  testJobIds[2] = (await Job.create(
-      { title: "J3", salary: 3, /* equity null */ companyHandle: "c1" })).id;
+  await Job.create(
+    {
+      title: "j1",
+      salary: 1,
+      equity: 0,
+      companyHandle: "c1",
+    });
+  await Job.create(
+      {
+        title: "j2",
+        salary: 2,
+        equity: 0.010,
+        companyHandle: "c1",
+      });
+  await Job.create(
+      {
+        title: "j3",
+        salary: 3,
+        equity: 0.020,
+        companyHandle: "c3",
+      });
 
   await User.register({
     username: "u1",
@@ -70,8 +82,14 @@ async function commonBeforeAll() {
     password: "password3",
     isAdmin: false,
   });
-
-  await User.applyToJob("u1", testJobIds[0]);
+  await User.register({
+    username: "u4",
+    firstName: "U4F",
+    lastName: "U4L",
+    email: "user4@user.com",
+    password: "password4",
+    isAdmin: true,
+  });
 }
 
 async function commonBeforeEach() {
@@ -88,8 +106,8 @@ async function commonAfterAll() {
 
 
 const u1Token = createToken({ username: "u1", isAdmin: false });
-const u2Token = createToken({ username: "u2", isAdmin: false });
-const adminToken = createToken({ username: "admin", isAdmin: true });
+// Consider renaming this variable to adminToken
+const u4Token = createToken({ username: "u4", isAdmin: true });
 
 
 module.exports = {
@@ -97,8 +115,6 @@ module.exports = {
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
-  testJobIds,
   u1Token,
-  u2Token,
-  adminToken,
+  u4Token,
 };

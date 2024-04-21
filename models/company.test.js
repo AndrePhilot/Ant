@@ -8,7 +8,6 @@ const {
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
-  testJobIds,
 } = require("./_testCommon");
 
 beforeAll(commonBeforeAll);
@@ -44,6 +43,7 @@ describe("create", function () {
         logo_url: "http://new.img",
       },
     ]);
+    await Company.remove(company.handle);
   });
 
   test("bad request with dupe", async function () {
@@ -54,13 +54,14 @@ describe("create", function () {
     } catch (err) {
       expect(err instanceof BadRequestError).toBeTruthy();
     }
+    await Company.remove(newCompany.handle);
   });
 });
 
 /************************************** findAll */
 
 describe("findAll", function () {
-  test("works: all", async function () {
+  test("works: no filter", async function () {
     let companies = await Company.findAll();
     expect(companies).toEqual([
       {
@@ -84,95 +85,21 @@ describe("findAll", function () {
         numEmployees: 3,
         logoUrl: "http://c3.img",
       },
-    ]);
-  });
-
-  test("works: by min employees", async function () {
-    let companies = await Company.findAll({ minEmployees: 2 });
-    expect(companies).toEqual([
       {
-        handle: "c2",
-        name: "C2",
-        description: "Desc2",
-        numEmployees: 2,
-        logoUrl: "http://c2.img",
-      },
-      {
-        handle: "c3",
-        name: "C3",
-        description: "Desc3",
-        numEmployees: 3,
-        logoUrl: "http://c3.img",
+        handle: "d4",
+        name: "D4",
+        description: "Desc4",
+        numEmployees: 0,
+        logoUrl: "http://d4.img",
       },
     ]);
-  });
-
-  test("works: by max employees", async function () {
-    let companies = await Company.findAll({ maxEmployees: 2 });
-    expect(companies).toEqual([
-      {
-        handle: "c1",
-        name: "C1",
-        description: "Desc1",
-        numEmployees: 1,
-        logoUrl: "http://c1.img",
-      },
-      {
-        handle: "c2",
-        name: "C2",
-        description: "Desc2",
-        numEmployees: 2,
-        logoUrl: "http://c2.img",
-      },
-    ]);
-  });
-
-  test("works: by min-max employees", async function () {
-    let companies = await Company.findAll(
-        { minEmployees: 1, maxEmployees: 1 });
-    expect(companies).toEqual([
-      {
-        handle: "c1",
-        name: "C1",
-        description: "Desc1",
-        numEmployees: 1,
-        logoUrl: "http://c1.img",
-      },
-    ]);
-  });
-
-  test("works: by name", async function () {
-    let companies = await Company.findAll({ name: "1" });
-    expect(companies).toEqual([
-      {
-        handle: "c1",
-        name: "C1",
-        description: "Desc1",
-        numEmployees: 1,
-        logoUrl: "http://c1.img",
-      },
-    ]);
-  });
-
-  test("works: empty list on nothing found", async function () {
-    let companies = await Company.findAll({ name: "nope" });
-    expect(companies).toEqual([]);
-  });
-
-  test("bad request if invalid min > max", async function () {
-    try {
-      await Company.findAll({ minEmployees: 10, maxEmployees: 1 });
-      fail();
-    } catch (err) {
-      expect(err instanceof BadRequestError).toBeTruthy();
-    }
   });
 });
 
 /************************************** get */
 
 describe("get", function () {
-  test("works", async function () {
+  test("works w/ company that has multiple jobs", async function () {
     let company = await Company.get("c1");
     expect(company).toEqual({
       handle: "c1",
@@ -180,12 +107,30 @@ describe("get", function () {
       description: "Desc1",
       numEmployees: 1,
       logoUrl: "http://c1.img",
-      jobs: [
-        { id: testJobIds[0], title: "Job1", salary: 100, equity: "0.1" },
-        { id: testJobIds[1], title: "Job2", salary: 200, equity: "0.2" },
-        { id: testJobIds[2], title: "Job3", salary: 300, equity: "0" },
-        { id: testJobIds[3], title: "Job4", salary: null, equity: null },
-      ],
+      jobs: [{
+        id: expect.any(Number),
+        title: "Architect",
+        salary: 100000,
+        equity: "0.090",
+      },
+      {
+        id: expect.any(Number),
+        title: "Designer",
+        salary: 50000,
+        equity: "0",
+      }]
+    });
+  });
+
+  test("works w/ company that has no jobs", async function () {
+    let company = await Company.get("d4");
+    expect(company).toEqual({
+      handle: "d4",
+      name: "D4",
+      description: "Desc4",
+      numEmployees: 0,
+      logoUrl: "http://d4.img",
+      jobs: []
     });
   });
 
@@ -292,5 +237,266 @@ describe("remove", function () {
     } catch (err) {
       expect(err instanceof NotFoundError).toBeTruthy();
     }
+  });
+});
+
+  /************************************** filter */
+
+describe("filter existing data using one, some or all params", function () {
+
+  test("filter by name only and that applies to multiple entries", async function () {
+    const filterQuery = {name: "c"};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+      {
+        handle: "c3",
+        name: "C3",
+        description: "Desc3",
+        numEmployees: 3,
+        logoUrl: "http://c3.img",
+      },
+    ]);
+  });
+
+  test("filter by name only and that applies to a single entry", async function () {
+    const filterQuery = {name: "2"};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+    ]);
+  });
+
+  test("filter by minEmployees only and that applies to a single entry", async function () {
+    const filterQuery = { minEmployees: 3};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c3",
+        name: "C3",
+        description: "Desc3",
+        numEmployees: 3,
+        logoUrl: "http://c3.img",
+      },
+    ]);
+  });
+
+  test("filter by minEmployees only and that applies to multiple entries", async function () {
+    const filterQuery = { minEmployees: 1};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+      {
+        handle: "c3",
+        name: "C3",
+        description: "Desc3",
+        numEmployees: 3,
+        logoUrl: "http://c3.img",
+      },
+    ]);
+  });
+
+  test("filter by minEmployees only with value that is not a number", async function () {
+    const filterQuery = { minEmployees: "bunch"};
+    
+    try {
+      await Company.filter(filterQuery);
+      // Fail the test if no error is thrown
+      fail("Expected an error to be thrown.");
+    } catch (error) {
+        // Check if the error is an instance of DatabaseError or has the expected message
+        expect(error.constructor.name).toBe("DatabaseError");
+        expect(error.message).toContain("invalid input syntax for type integer");
+    }
+  });
+
+  test("filter by maxEmployees only and that applies to a single entry", async function () {
+    const filterQuery = { maxEmployees: 1};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      {
+        handle: "d4",
+        name: "D4",
+        description: "Desc4",
+        numEmployees: 0,
+        logoUrl: "http://d4.img",
+      },
+    ]);
+  });
+
+  test("filter by maxEmployees only and that applies to multiple entries", async function () {
+    const filterQuery = { maxEmployees: 3};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+      {
+        handle: "c3",
+        name: "C3",
+        description: "Desc3",
+        numEmployees: 3,
+        logoUrl: "http://c3.img",
+      },
+      {
+        handle: "d4",
+        name: "D4",
+        description: "Desc4",
+        numEmployees: 0,
+        logoUrl: "http://d4.img",
+      },
+    ]);
+  });
+
+  test("filter by maxEmployees only with value that is not a number", async function () {
+    const filterQuery = { minEmployees: "bunch"};
+    try {
+      await Company.filter(filterQuery);
+      // Fail the test if no error is thrown
+      fail("Expected an error to be thrown.");
+    } catch (error) {
+        // Check if the error is an instance of DatabaseError or has the expected message
+        expect(error.constructor.name).toBe("DatabaseError");
+        expect(error.message).toContain("invalid input syntax for type integer");
+    }
+  });
+
+  test("filter by name and maxEmployees only", async function () {
+    const filterQuery = { name: "1", maxEmployees: 3};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+    ]);
+  });
+
+  test("filter by name and minEmployees only", async function () {
+    const filterQuery = { name: "c", minEmployees: 3};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c3",
+        name: "C3",
+        description: "Desc3",
+        numEmployees: 3,
+        logoUrl: "http://c3.img",
+      },
+    ]);
+  });
+
+  test("filter by name, minEmployees and maxEmployees", async function () {
+    const filterQuery = { name: "c", maxEmployees: 2, minEmployees: 1};
+    
+    let company = await Company.filter(filterQuery);
+    expect(company).toEqual([
+      {
+        handle: "c1",
+        name: "C1",
+        description: "Desc1",
+        numEmployees: 1,
+        logoUrl: "http://c1.img",
+      },
+      {
+        handle: "c2",
+        name: "C2",
+        description: "Desc2",
+        numEmployees: 2,
+        logoUrl: "http://c2.img",
+      },
+    ]);
+  });
+
+  test("filter by name, minEmployees, maxEmployees and an unauthorized criteria", async function () {
+    const filterQuery = { name: "c", maxEmployees: 1, minEmployees: 2, age: 12};
+    
+    await expect(Company.filter(filterQuery)).rejects.toThrowError(BadRequestError);
+  });
+
+  test("filter by names, an unauthorized criteria", async function () {
+    const filterQuery = { names: "c" };
+    
+    try {
+        await Company.filter(filterQuery);
+        // Fail the test if no error is thrown
+        fail("Expected an error to be thrown.");
+    } catch (error) {
+        // Check if the error has the expected message indicating a syntax error
+        expect(error.message).toContain("syntax error at end of input");
+    }
+  });
+
+  test("minEmployees is greater than maxEmployees", async function () {
+    const filterQuery = { maxEmployees: 1, minEmployees: 2};
+    
+    await expect(Company.filter(filterQuery)).rejects.toThrowError(BadRequestError);
+  });
+
+  test("filter by name but entry doesn't exist", async function () {
+    const filterQuery = {name: "a"};
+    
+    await expect(Company.filter(filterQuery)).rejects.toThrowError(NotFoundError);
   });
 });
