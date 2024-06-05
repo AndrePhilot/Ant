@@ -20,7 +20,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(morgan("tiny"));
-app.use(authenticateJWT);
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/auth')) {
+    next();
+  } else {
+    authenticateJWT(req, res, next);
+  }
+});
 
 app.use("/auth", authRoutes);
 app.use("/companies", companiesRoutes);
