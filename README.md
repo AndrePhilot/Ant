@@ -24,6 +24,19 @@ To get a copy of the project up and running on your local machine, follow these 
 - Node.js and npm installed
 - Install and configure PostgreSQL database.
 
+### Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+
+2. Install dependencies:
+   
+    ```bash
+    npm install
+
 ### Setting Up the Database
 
 To set up and seed the PostgreSQL database for this project, run the following command in your terminal:
@@ -41,21 +54,7 @@ If your PostgreSQL username is `postgres` and the `jobly.sql` file is located in
 
 This command will connect to the PostgreSQL server as the specified user, select the jobly database, and execute the jobly.sql script to create and seed the database.
 
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone <repository-url>
-   cd <repository-directory>
-
-2. Install dependencies:
-   
-    ```bash
-    npm install
-
 ### Running the Application
-
 
 To start the application, run:
 
